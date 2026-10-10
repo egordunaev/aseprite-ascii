@@ -1,0 +1,14 @@
+{
+  "name": "ascii-art",
+  "displayName": "ASCII Art",
+  "description": "Live ASCII art preview of the current frame, with copy and save to .txt",
+  "version": "0.1.0",
+  "author": { "name": "Egor Dunaev" },
+  "license": "MIT",
+  "categories": [ "Scripts" ],
+  "contributes": {
+    "scripts": [
+      { "path": "./ascii.lua" }
+    ]
+  }
+}
