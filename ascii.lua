@@ -1,6 +1,6 @@
--- View > ASCII Art... opens a live ASCII preview of the current frame.
+-- View > ASCII Art toggles a live ASCII preview of the current frame, kept on the right side.
 local core, prefs
-local dlg, timer, watched, siteHook
+local dlg, timer, watched, siteHook, resizeHook
 local grid, rows, used, text = nil, nil, nil, ""
 local ox, oy, drag = 0, 0, nil -- canvas scroll offset, drag anchor
 
@@ -47,9 +47,18 @@ local function watch(spr)
   end
 end
 
+-- Scripts can't dock into the workspace, so the dialog floats against the main window's right edge.
+local function sideBounds()
+  if not app.window then return nil end
+  local w = math.min(prefs.panelWidth, app.window.width)
+  return Rectangle(app.window.width - w, 0, w, app.window.height)
+end
+
 local function cleanup()
+  if dlg then prefs.panelWidth = dlg.bounds.width end
   if siteHook then app.events:off(siteHook) end
-  siteHook = nil
+  if resizeHook then app.window.events:off(resizeHook) end
+  siteHook, resizeHook = nil, nil
   watch(nil)
   if timer then timer:stop() end
   dlg = nil
@@ -109,9 +118,13 @@ local function save()
   f:close()
 end
 
+local function close()
+  if dlg then dlg:close() end
+  cleanup()
+end
+
 local function open()
-  if dlg then return refresh() end
-  timer = timer or Timer{ interval = 0.15, ontick = function() timer:stop(); refresh() end }
+  timer =timer or Timer{ interval = 0.15, ontick = function() timer:stop(); refresh() end }
 
   dlg = Dialog{ title = "ASCII Art", resizeable = true, onclose = cleanup }
   dlg:slider{ id = "cellW", label = "Cell width", min = 1, max = 32, value = prefs.cellW, onchange = apply }
@@ -126,7 +139,7 @@ local function open()
   dlg:check{ id = "invert", label = "Style", text = "Light on dark", selected = prefs.invert, onclick = apply }
   dlg:check{ id = "color", text = "Colored", selected = prefs.color, onclick = apply }
   dlg:separator()
-  dlg:canvas{ id = "view", width = 600, height = 360, onpaint = paint,
+  dlg:canvas{ id = "view", width = 160, height = 160, onpaint = paint,
     onwheel = function(ev)
       if ev.shiftKey then
         ox = ox + math.floor(ev.deltaY * 30)
@@ -150,9 +163,15 @@ local function open()
   dlg:newrow()
   dlg:button{ text = "Copy", onclick = copy }
   dlg:button{ text = "Close" }
-  dlg:show{ wait = false }
+  dlg:show{ wait = false, bounds = sideBounds() }
 
   siteHook = app.events:on("sitechange", function() watch(app.sprite); schedule() end)
+  if app.window then
+    resizeHook = app.window.events:on("resize", function()
+      prefs.panelWidth = dlg.bounds.width -- keep a width the user dragged to
+      dlg.bounds = sideBounds()
+    end)
+  end
   watch(app.sprite)
   refresh()
 end
@@ -160,20 +179,21 @@ end
 function init(plugin)
   core = dofile(app.fs.joinPath(plugin.path, "core.lua"))
   prefs = plugin.preferences
-  local defaults = { cellW = 1, cellH = 2, preset = "Standard", glyphs = core.presets.Standard, invert = false, color = false }
+  local defaults = { cellW = 1, cellH = 2, preset = "Standard", glyphs = core.presets.Standard,
+    invert = false, color = false, panelWidth = 320 }
   for k, v in pairs(defaults) do
     if prefs[k] == nil then prefs[k] = v end
   end
   plugin:newCommand{
     id = "AsciiArt",
-    title = "ASCII Art...",
+    title = "ASCII Art",
     group = "view_new",
-    onenabled = function() return app.sprite ~= nil end,
-    onclick = open,
+    onenabled = function() return app.sprite ~= nil or dlg ~= nil end,
+    onchecked = function() return dlg ~= nil end,
+    onclick = function() if dlg then close() else open() end end,
   }
 end
 
 function exit(plugin)
-  if dlg then dlg:close() end
-  cleanup()
+  close()
 end

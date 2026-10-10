@@ -52,6 +52,7 @@ local command
 assert(loadfile("ascii.lua"))()
 init{ path = ".", preferences = {}, newCommand = function(_, t) command = t end }
 assert(command and command.onclick and command.group == "view_new", "command registered")
+assert(command.onchecked() == false, "panel starts closed")
 exit{}
 
 print("ok")
