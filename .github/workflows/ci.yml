@@ -1,0 +1,21 @@
+name: CI
+
+on: [push, pull_request]
+
+jobs:
+  lint-and-package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Lint
+        uses: lunarmodules/luacheck@v1
+
+      # test.lua needs Aseprite itself, so it runs locally: aseprite -b --script test.lua
+      - name: Package extension
+        run: zip ascii-art.aseprite-extension package.json ascii.lua core.lua
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ascii-art-extension
+          path: ascii-art.aseprite-extension

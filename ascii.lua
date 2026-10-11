@@ -231,6 +231,6 @@ function init(plugin)
   }
 end
 
-function exit(plugin)
+function exit()
   close()
 end
