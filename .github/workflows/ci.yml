@@ -5,11 +5,17 @@ on: [push, pull_request]
 jobs:
   lint-and-package:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write # create releases on v* tags
     steps:
       - uses: actions/checkout@v4
 
       - name: Lint
         uses: lunarmodules/luacheck@v1
+
+      - name: Check tag matches package.json version
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: test "${GITHUB_REF_NAME#v}" = "$(jq -r .version package.json)"
 
       # test.lua needs Aseprite itself, so it runs locally: aseprite -b --script test.lua
       - name: Package extension
@@ -19,3 +25,9 @@ jobs:
         with:
           name: ascii-art-extension
           path: ascii-art.aseprite-extension
+
+      - name: Publish release
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" ascii-art.aseprite-extension --generate-notes
