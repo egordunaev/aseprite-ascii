@@ -126,7 +126,8 @@ end
 local function open()
   timer =timer or Timer{ interval = 0.15, ontick = function() timer:stop(); refresh() end }
 
-  dlg = Dialog{ title = "ASCII Art", resizeable = true, onclose = cleanup }
+  -- autofit=0: the default (LEFT|TOP) shrinks the dialog to its size hint on every dlg:modify.
+  dlg = Dialog{ title = "ASCII Art", resizeable = true, autofit = 0, onclose = cleanup }
   dlg:slider{ id = "cellW", label = "Cell width", min = 1, max = 32, value = prefs.cellW, onchange = apply }
   dlg:slider{ id = "cellH", label = "Cell height", min = 1, max = 32, value = prefs.cellH, onchange = apply }
   dlg:combobox{ id = "preset", label = "Preset", option = prefs.preset, options = core.presetNames,
@@ -159,7 +160,7 @@ local function open()
   dlg:label{ id = "info", text = "" }
   dlg:separator()
   dlg:file{ id = "save", label = "Save .txt", save = true, filetypes = { "txt" },
-    filename = app.fs.filePathAndTitle(app.sprite.filename) .. ".txt", onchange = save }
+    filename = app.fs.joinPath(app.fs.filePath(app.sprite.filename), "ascii-output.txt"), onchange = save }
   dlg:newrow()
   dlg:button{ text = "Copy", onclick = copy }
   dlg:button{ text = "Close" }
