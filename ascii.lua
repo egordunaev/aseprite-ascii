@@ -134,9 +134,14 @@ local function toLayer()
     if not (regular and mini) then return app.alert("Couldn't find Aseprite's bundled pixel fonts") end
     fonts = { core.loadFont(regular), core.loadFont(mini) }
   end
-  convert() -- a debounced refresh may still be pending
   local font = fonts[1]
   if prefs.cellW < font.w or prefs.cellH < font.h then font = fonts[2] end
+  -- Cropping a glyph to a smaller cell keeps an arbitrary sliver of it, so whole tones vanish.
+  if prefs.cellW < font.w or prefs.cellH < font.h then
+    return app.alert(("Cells are smaller than the pixel font, so glyphs would be cropped to noise.\n"
+      .. "Set the cell size to at least %d x %d."):format(font.w, font.h))
+  end
+  convert() -- a debounced refresh may still be pending
   local ink
   if not prefs.color then ink = prefs.invert and app.pixelColor.rgba(255, 255, 255) or app.pixelColor.rgba(0, 0, 0) end
 

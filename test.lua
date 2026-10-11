@@ -75,12 +75,59 @@ end
 eq(core.render({ { "█" } }, { { { r = 255, g = 0, b = 0, a = 1 } } }, mini, 2, 2, 2, 2):getPixel(1, 1),
   pc.rgba(255, 0, 0), "cell color")
 
--- plugin script loads and registers its command
-local command
+-- plugin, driven through a stub Dialog (Dialog() is nil in batch mode)
+local buttons, data = {}, {}
+Dialog = function()
+  local d = { data = data, bounds = Rectangle(0, 0, 100, 100) }
+  local function widget(key) return function(_, t) if t.id then data[t.id] = t[key] end end end
+  d.slider, d.combobox, d.entry, d.check = widget("value"), widget("option"), widget("text"), widget("selected")
+  d.file, d.label = widget("filename"), widget("text")
+  d.button = function(_, t) if t.onclick then buttons[t.text] = t.onclick end end
+  for _, m in ipairs{ "separator", "canvas", "newrow", "show", "modify", "repaint", "close" } do d[m] = function() end end
+  return d
+end
+
+-- three side-by-side 8px columns: base layer, then two layers inside a group
+local layered = Sprite(24, 16, ColorMode.RGB)
+local function fill(layer, x, color)
+  local img = Image(24, 16, ColorMode.RGB)
+  for it in img:pixels(Rectangle(x, 0, 8, 16)) do it(color) end
+  layered:newCel(layer, 1, img)
+end
+fill(layered.layers[1], 0, GRAY)
+local group = layered:newGroup()
+local a, b = layered:newLayer(), layered:newLayer()
+a.parent, b.parent = group, group
+fill(a, 8, BLACK)
+fill(b, 16, GRAY)
+app.layer = a
+
+local command, prefs = nil, {}
 assert(loadfile("ascii.lua"))()
-init{ path = ".", preferences = {}, newCommand = function(_, t) command = t end }
+init{ path = ".", preferences = prefs, newCommand = function(_, t) command = t end }
 assert(command and command.onclick and command.group == "view_new", "command registered")
+eq(prefs.cellW, 1, "default prefs filled")
 assert(command.onchecked() == false, "panel starts closed")
+command.onclick()
+assert(command.onchecked() == true, "panel open")
+
+-- cells smaller than the font: refused, nothing added
+local layerCount = #layered.layers
+buttons["New layer"]()
+eq(#layered.layers, layerCount, "tiny cells refused")
+
+-- every visible layer ends up in the stamp, not just one from the group
+prefs.cellW, prefs.cellH = 8, 8
+buttons["New layer"]()
+local top = layered.layers[#layered.layers]
+eq(top.name, "ASCII", "layer added on top")
+local cel = top:cel(1)
+local stampedLayer = Image(24, 16, ColorMode.RGB)
+stampedLayer:drawImage(cel.image, cel.position)
+for x = 0, 16, 8 do
+  assert(inked(Image(stampedLayer, Rectangle(x, 0, 8, 16))) > 0, "column at x=" .. x .. " stamped")
+end
 exit{}
+layered:close()
 
 print("ok")
