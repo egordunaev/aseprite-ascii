@@ -2,8 +2,8 @@
   "name": "ascii-art",
   "displayName": "ASCII Art",
   "description": "Live ASCII art preview of the current frame: copy, save to .txt, or stamp into a new layer",
-  "version": "0.1.0",
-  "author": { "name": "Egor Dunaev" },
+  "version": "0.2.0",
+  "author": { "name": "egordunaev" },
   "license": "MIT",
   "categories": [ "Scripts" ],
   "contributes": {
