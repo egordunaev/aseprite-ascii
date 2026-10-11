@@ -47,6 +47,34 @@ eq(flat:getPixel(0, 0), BLACK, "indexed black")
 eq(pc.rgbaA(flat:getPixel(1, 0)), 0, "indexed clear")
 spr:close()
 
+-- bundled pixel fonts parse: ASCII from ' ', "M" sets the cell size
+local mini = core.loadFont(assert(core.fontPath("aseprite_mini.png"), "mini font found"))
+local regular = core.loadFont(assert(core.fontPath("aseprite_font.png"), "regular font found"))
+eq(mini.h, 5, "mini height")
+eq(regular.h, 7, "regular height")
+assert(mini.glyphs["~"] and regular.glyphs["~"], "fonts cover printable ASCII")
+
+local function inked(img)
+  local n = 0
+  for p in img:pixels() do if pc.rgbaA(p()) > 0 then n = n + 1 end end
+  return n
+end
+
+-- glyphs stamp into their cell; ink color applies; space and unknown glyphs stay blank
+local cellGrid = { { { r = 0, g = 0, b = 0, a = 1 }, { r = 0, g = 0, b = 0, a = 1 } } }
+local stamped = core.render({ { "#", " " } }, cellGrid, mini, 16, 8, 8, 8, WHITE)
+assert(inked(stamped) > 0, "# drawn")
+for p in stamped:pixels(Rectangle(8, 0, 8, 8)) do eq(p(), CLEAR, "space cell blank") end
+for p in stamped:pixels() do assert(p() == CLEAR or p() == WHITE, "ink color") end
+eq(inked(core.render({ { "☃" } }, cellGrid, mini, 8, 8, 8, 8, WHITE)), 0, "missing glyph blank")
+
+-- shade blocks dither: 4x4 cell -> 4, 8, 12, 16 pixels; nil ink uses the cell color
+for g, n in pairs{ ["░"] = 4, ["▒"] = 8, ["▓"] = 12, ["█"] = 16 } do
+  eq(inked(core.render({ { g } }, cellGrid, mini, 4, 4, 4, 4, WHITE)), n, g .. " coverage")
+end
+eq(core.render({ { "█" } }, { { { r = 255, g = 0, b = 0, a = 1 } } }, mini, 2, 2, 2, 2):getPixel(1, 1),
+  pc.rgba(255, 0, 0), "cell color")
+
 -- plugin script loads and registers its command
 local command
 assert(loadfile("ascii.lua"))()

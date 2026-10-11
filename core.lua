@@ -76,4 +76,80 @@ function core.toText(rows)
   return table.concat(lines, "\n")
 end
 
+-- Bundled pixel font sheets live in data/fonts next to the executable (Windows/Linux portable),
+-- in Contents/Resources on macOS, or in share/aseprite on Linux installs.
+function core.fontPath(name)
+  local bin = app.fs.filePath(app.fs.appPath)
+  local up = app.fs.filePath(bin)
+  for _, dir in ipairs{ app.fs.joinPath(bin, "data/fonts"), app.fs.joinPath(up, "Resources/data/fonts"),
+                        app.fs.joinPath(up, "share/aseprite/data/fonts") } do
+    local path = app.fs.joinPath(dir, name)
+    if app.fs.isFile(path) then return path end
+  end
+end
+
+-- Parses an Aseprite sprite-sheet font: glyph boxes separated by the key color (top-left pixel),
+-- in codepoint order from ' ', red boxes for missing glyphs. Same scan as laf's SpriteSheetTypeface.
+-- Returns { img, glyphs = { [char] = Rectangle }, w, h } with w/h the size of the "M" box.
+function core.loadFont(path)
+  local img = Image{ fromFile = path }
+  local key, red = img:getPixel(0, 0), app.pixelColor.rgba(255, 0, 0)
+  local glyphs = {}
+  local x, y, h, cp = 0, 0, 1, 32
+  while true do
+    if x >= img.width then x, y, h = 0, y + h, 1 end
+    if y >= img.height then break end
+    if img:getPixel(x, y) == key then
+      x = x + 1
+    else
+      local w, bh = 0, 0
+      while x + w < img.width and img:getPixel(x + w, y) ~= key do w = w + 1 end
+      while y + bh < img.height and img:getPixel(x, y + bh) ~= key do bh = bh + 1 end
+      if img:getPixel(x, y) ~= red then glyphs[utf8.char(cp)] = Rectangle(x, y, w, bh) end
+      x, h, cp = x + w, bh, cp + 1
+    end
+  end
+  return { img = img, glyphs = glyphs, w = glyphs.M.width, h = glyphs.M.height }
+end
+
+-- Shade blocks aren't in the fonts, so they're dithered: 25/50/75/100% coverage.
+local SHADES = {
+  ["░"] = function(x, y) return x % 2 == 0 and y % 2 == 0 end,
+  ["▒"] = function(x, y) return (x + y) % 2 == 0 end,
+  ["▓"] = function(x, y) return x % 2 == 0 or y % 2 == 0 end,
+  ["█"] = function() return true end,
+}
+
+-- Stamps each cell's glyph, centered and clipped to the cell, into a width x height RGB image.
+-- ink is the pixel color for every glyph, or nil to use each cell's average color.
+-- Glyphs the font doesn't have are left blank.
+function core.render(rows, grid, font, width, height, cellW, cellH, ink)
+  local pc = app.pixelColor
+  local out = Image(width, height, ColorMode.RGB)
+  for r, row in ipairs(rows) do
+    for c, g in ipairs(row) do
+      local x0, y0 = (c - 1) * cellW, (r - 1) * cellH
+      local x1, y1 = math.min(x0 + cellW, width), math.min(y0 + cellH, height)
+      local cell = grid[r][c]
+      local color = ink or pc.rgba(math.floor(cell.r), math.floor(cell.g), math.floor(cell.b))
+      local shade, box = SHADES[g], font.glyphs[g]
+      if shade then
+        for y = y0, y1 - 1 do
+          for x = x0, x1 - 1 do
+            if shade(x, y) then out:drawPixel(x, y, color) end
+          end
+        end
+      elseif box and g ~= " " then
+        local dx, dy = x0 + (cellW - box.width) // 2, y0 + (cellH - box.height) // 2
+        for y = math.max(y0, dy), math.min(y1, dy + box.height) - 1 do
+          for x = math.max(x0, dx), math.min(x1, dx + box.width) - 1 do
+            if pc.rgbaA(font.img:getPixel(box.x + x - dx, box.y + y - dy)) > 0 then out:drawPixel(x, y, color) end
+          end
+        end
+      end
+    end
+  end
+  return out
+end
+
 return core

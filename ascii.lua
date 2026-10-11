@@ -123,6 +123,32 @@ local function close()
   cleanup()
 end
 
+local fonts -- { regular, mini }, loaded on first use
+
+-- Stamps the current ASCII into a new layer, one glyph per cell, in one undo step.
+local function toLayer()
+  local spr = app.sprite
+  if not spr then return end
+  if not fonts then
+    local regular, mini = core.fontPath("aseprite_font.png"), core.fontPath("aseprite_mini.png")
+    if not (regular and mini) then return app.alert("Couldn't find Aseprite's bundled pixel fonts") end
+    fonts = { core.loadFont(regular), core.loadFont(mini) }
+  end
+  convert() -- a debounced refresh may still be pending
+  local font = fonts[1]
+  if prefs.cellW < font.w or prefs.cellH < font.h then font = fonts[2] end
+  local ink
+  if not prefs.color then ink = prefs.invert and app.pixelColor.rgba(255, 255, 255) or app.pixelColor.rgba(0, 0, 0) end
+
+  local img = Image(spr.spec)
+  img:drawImage(core.render(rows, grid, font, spr.width, spr.height, prefs.cellW, prefs.cellH, ink)) -- to sprite's color mode
+  app.transaction("ASCII Art to Layer", function()
+    local layer = spr:newLayer()
+    layer.name = "ASCII"
+    spr:newCel(layer, app.frame, img)
+  end)
+end
+
 local function open()
   timer =timer or Timer{ interval = 0.15, ontick = function() timer:stop(); refresh() end }
 
@@ -163,6 +189,7 @@ local function open()
     filename = app.fs.joinPath(app.fs.filePath(app.sprite.filename), "ascii-output.txt"), onchange = save }
   dlg:newrow()
   dlg:button{ text = "Copy", onclick = copy }
+  dlg:button{ text = "New layer", onclick = toLayer }
   dlg:button{ text = "Close" }
   dlg:show{ wait = false, bounds = sideBounds() }
 
