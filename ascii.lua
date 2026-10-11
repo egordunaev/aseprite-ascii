@@ -7,7 +7,7 @@ local ox, oy, drag = 0, 0, nil -- canvas scroll offset, drag anchor
 local WHITE, BLACK = Color{ r = 255, g = 255, b = 255 }, Color{ r = 0, g = 0, b = 0 }
 
 local function glyphs()
-  local t = core.split(prefs.glyphs)
+  local t = core.split(prefs.preset == "Custom" and prefs.glyphs or core.presets[prefs.preset])
   if #t == 0 then t = core.split(core.presets.Standard) end
   return t
 end
@@ -99,8 +99,9 @@ end
 
 local function apply()
   local d = dlg.data
-  prefs.cellW, prefs.cellH, prefs.glyphs = d.cellW, d.cellH, d.glyphs
+  prefs.cellW, prefs.cellH = d.cellW, d.cellH
   prefs.invert, prefs.color = d.invert, d.color
+  if prefs.preset == "Custom" then prefs.glyphs = d.glyphs end
   schedule()
 end
 
@@ -161,13 +162,15 @@ local function open()
   dlg = Dialog{ title = "ASCII Art", resizeable = true, autofit = 0, onclose = cleanup }
   dlg:slider{ id = "cellW", label = "Cell width", min = 1, max = 32, value = prefs.cellW, onchange = apply }
   dlg:slider{ id = "cellH", label = "Cell height", min = 1, max = 32, value = prefs.cellH, onchange = apply }
-  dlg:combobox{ id = "preset", label = "Preset", option = prefs.preset, options = core.presetNames,
+  -- Presets show their ramp read-only; Custom edits and keeps the user's own glyphs.
+  local function ramp() return prefs.preset == "Custom" and prefs.glyphs or core.presets[prefs.preset] end
+  dlg:combobox{ id = "preset", label = "Preset", option = prefs.preset, options = { "Standard", "Detailed", "Custom" },
     onchange = function()
       prefs.preset = dlg.data.preset
-      dlg:modify{ id = "glyphs", text = core.presets[prefs.preset] }
+      dlg:modify{ id = "glyphs", text = ramp(), enabled = prefs.preset == "Custom" }
       apply()
     end }
-  dlg:entry{ id = "glyphs", label = "Glyphs", text = prefs.glyphs, onchange = apply }
+  dlg:entry{ id = "glyphs", label = "Glyphs", text = ramp(), enabled = prefs.preset == "Custom", onchange = apply }
   dlg:check{ id = "invert", label = "Style", text = "Light on dark", selected = prefs.invert, onclick = apply }
   dlg:check{ id = "color", text = "Colored", selected = prefs.color, onclick = apply }
   dlg:separator()
@@ -217,6 +220,7 @@ function init(plugin)
   for k, v in pairs(defaults) do
     if prefs[k] == nil then prefs[k] = v end
   end
+  if prefs.preset ~= "Custom" and not core.presets[prefs.preset] then prefs.preset = "Standard" end -- e.g. removed "Blocks"
   plugin:newCommand{
     id = "AsciiArt",
     title = "ASCII Art",

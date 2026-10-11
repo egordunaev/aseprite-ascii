@@ -5,9 +5,7 @@ local core = {}
 core.presets = {
   Standard = " .:-=+*#%@",
   Detailed = " .'`^\",:;Il!i><~+_-?][}{1)(|\\/tfjrxnuvczXYUJCLQ0OZmwqpdbkhao*#MW&8%B@$",
-  Blocks = " ░▒▓█",
 }
-core.presetNames = { "Standard", "Detailed", "Blocks" }
 
 -- Splits a UTF-8 string into a table of characters.
 function core.split(s)

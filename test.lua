@@ -23,7 +23,7 @@ local function ascii(img, cellW, cellH, glyphs, invert)
 end
 
 -- multibyte glyphs split per character
-local blocks = core.split(core.presets.Blocks)
+local blocks = core.split(" ░▒▓█")
 eq(#blocks, 5, "blocks count")
 eq(blocks[2], "░", "blocks[2]")
 
@@ -102,14 +102,17 @@ fill(a, 8, BLACK)
 fill(b, 16, GRAY)
 app.layer = a
 
-local command, prefs = nil, {}
+local command, prefs = nil, { preset = "Blocks" }
 assert(loadfile("ascii.lua"))()
 init{ path = ".", preferences = prefs, newCommand = function(_, t) command = t end }
 assert(command and command.onclick and command.group == "view_new", "command registered")
 eq(prefs.cellW, 1, "default prefs filled")
+eq(prefs.preset, "Standard", "removed preset falls back")
 assert(command.onchecked() == false, "panel starts closed")
+prefs.preset, prefs.glyphs = "Custom", " .#"
 command.onclick()
 assert(command.onchecked() == true, "panel open")
+eq(data.glyphs, " .#", "custom glyphs shown")
 
 -- cells smaller than the font: refused, nothing added
 local layerCount = #layered.layers
