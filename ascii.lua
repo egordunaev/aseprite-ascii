@@ -1,5 +1,5 @@
 -- View > ASCII Art toggles a live ASCII preview of the current frame, kept on the right side.
-local core, prefs
+local core, xp, prefs
 local dlg, timer, watched, siteHook, resizeHook
 local grid, rows, used, text = nil, nil, nil, ""
 local ox, oy, drag = 0, 0, nil -- canvas scroll offset, drag anchor
@@ -119,6 +119,25 @@ local function save()
   f:close()
 end
 
+-- Same cells and colors as the preview; REXPaint draws the glyphs with its own CP437 font.
+local function saveXp()
+  local path = dlg.data.saveXp
+  if not path or path == "" or not rows then return end
+  local ink, paper = { r = 0, g = 0, b = 0 }, { r = 255, g = 255, b = 255 }
+  if prefs.invert then ink, paper = paper, ink end
+  local cells = {}
+  for r, row in ipairs(rows) do
+    cells[r] = {}
+    for c, g in ipairs(row) do
+      cells[r][c] = { code = xp.code(g), fg = prefs.color and grid[r][c] or ink, bg = paper }
+    end
+  end
+  local f, err = io.open(path, "wb")
+  if not f then return app.alert("Couldn't save: " .. err) end
+  f:write(xp.encode(cells))
+  f:close()
+end
+
 local function close()
   if dlg then dlg:close() end
   cleanup()
@@ -195,6 +214,8 @@ local function open()
   dlg:separator()
   dlg:file{ id = "save", label = "Save .txt", save = true, filetypes = { "txt" },
     filename = app.fs.joinPath(app.fs.filePath(app.sprite.filename), "ascii-output.txt"), onchange = save }
+  dlg:file{ id = "saveXp", label = "Save .xp", save = true, filetypes = { "xp" },
+    filename = app.fs.joinPath(app.fs.filePath(app.sprite.filename), "ascii-output.xp"), onchange = saveXp }
   dlg:newrow()
   dlg:button{ text = "Copy", onclick = copy }
   dlg:button{ text = "New layer", onclick = toLayer }
@@ -214,6 +235,7 @@ end
 
 function init(plugin)
   core = dofile(app.fs.joinPath(plugin.path, "core.lua"))
+  xp = dofile(app.fs.joinPath(plugin.path, "xp.lua"))
   prefs = plugin.preferences
   local defaults = { cellW = 1, cellH = 2, preset = "Standard", glyphs = core.presets.Standard,
     invert = false, color = false, panelWidth = 320 }

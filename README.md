@@ -29,12 +29,12 @@ This extension allows you to:
 macOs/Linux
 
 ```bash
-zip ascii-art.aseprite-extension package.json ascii.lua core.lua
+zip ascii-art.aseprite-extension package.json ascii.lua core.lua xp.lua
 ```
 
 windows (powershell)
 ```powershell
-Compress-Archive -Force package.json, ascii.lua, core.lua ascii-art.zip
+Compress-Archive -Force package.json, ascii.lua, core.lua, xp.lua ascii-art.zip
 Move-Item -Force ascii-art.zip ascii-art.aseprite-extension
 ```
 

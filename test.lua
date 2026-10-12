@@ -75,13 +75,52 @@ end
 eq(core.render({ { "█" } }, { { { r = 255, g = 0, b = 0, a = 1 } } }, mini, 2, 2, 2, 2):getPixel(1, 1),
   pc.rgba(255, 0, 0), "cell color")
 
+-- .xp export: CP437 codes, all 255 of them in place
+local xp = dofile("xp.lua")
+eq(xp.code("#"), 35, "ascii code")
+eq(xp.code("▼"), 31, "low glyph code")
+eq(xp.code("░"), 176, "shade code")
+eq(xp.code("█"), 219, "block code")
+eq(xp.code("\u{A0}"), 255, "last code")
+eq(xp.code("☃"), 63, "missing glyph is ?")
+eq(xp.crc32("123456789"), 0xCBF43926, "crc32 check value")
+
+-- Reads back xp.gzip's stored blocks, checking the framing and trailer.
+local function gunzip(s)
+  eq(s:sub(1, 3), "\31\139\8", "gzip magic")
+  local out, pos = {}, 11
+  repeat
+    local final, len, nlen
+    final, len, nlen, pos = string.unpack("<BI2I2", s, pos)
+    eq(nlen, ~len & 0xFFFF, "block nlen")
+    out[#out + 1] = s:sub(pos, pos + len - 1)
+    pos = pos + len
+  until final == 1
+  local data = table.concat(out)
+  local crc, size, after = string.unpack("<I4I4", s, pos)
+  eq(crc, xp.crc32(data), "gzip crc")
+  eq(size, #data, "gzip size")
+  eq(after, #s + 1, "nothing after trailer")
+  return data
+end
+eq(gunzip(xp.gzip("")), "", "empty gzip")
+local big = string.rep("0123456789", 7000)
+eq(gunzip(xp.gzip(big)), big, "multi-block gzip")
+
+-- cells go out column-major, colors floored
+local function cell(code) return { code = code, fg = { r = 1.9, g = 2, b = 3 }, bg = { r = 4, g = 5, b = 6 } } end
+local function record(code) return string.pack("<I4BBBBBB", code, 1, 2, 3, 4, 5, 6) end
+eq(gunzip(xp.encode{ { cell(65), cell(66) }, { cell(67), cell(68) } }),
+  string.pack("<i4i4i4i4", -1, 1, 2, 2) .. record(65) .. record(67) .. record(66) .. record(68), "xp layout")
+
 -- plugin, driven through a stub Dialog (Dialog() is nil in batch mode)
 local buttons, data = {}, {}
 Dialog = function()
   local d = { data = data, bounds = Rectangle(0, 0, 100, 100) }
   local function widget(key) return function(_, t) if t.id then data[t.id] = t[key] end end end
   d.slider, d.combobox, d.entry, d.check = widget("value"), widget("option"), widget("text"), widget("selected")
-  d.file, d.label = widget("filename"), widget("text")
+  d.label = widget("text")
+  d.file = function(_, t) data[t.id], buttons[t.label] = t.filename, t.onchange end
   d.button = function(_, t) if t.onclick then buttons[t.text] = t.onclick end end
   for _, m in ipairs{ "separator", "canvas", "newrow", "show", "modify", "repaint", "close" } do d[m] = function() end end
   return d
@@ -130,6 +169,16 @@ stampedLayer:drawImage(cel.image, cel.position)
 for x = 0, 16, 8 do
   assert(inked(Image(stampedLayer, Rectangle(x, 0, 8, 16))) > 0, "column at x=" .. x .. " stamped")
 end
+
+-- Save .xp writes the same 3x2 cells: gray "." and black "#" columns, black ink on white paper
+data.saveXp = app.fs.joinPath(app.fs.tempPath, "ascii-art-test.xp")
+buttons["Save .xp"]()
+local f = assert(io.open(data.saveXp, "rb"))
+local saved = gunzip(f:read("a"))
+f:close()
+os.remove(data.saveXp)
+local function dot(code) return string.pack("<I4BBBBBB", code, 0, 0, 0, 255, 255, 255) end
+eq(saved, string.pack("<i4i4i4i4", -1, 1, 3, 2) .. dot(46):rep(2) .. dot(35):rep(2) .. dot(46):rep(2), "saved xp")
 exit{}
 layered:close()
 
