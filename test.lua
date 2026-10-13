@@ -81,8 +81,17 @@ eq(xp.code("#"), 35, "ascii code")
 eq(xp.code("▼"), 31, "low glyph code")
 eq(xp.code("░"), 176, "shade code")
 eq(xp.code("█"), 219, "block code")
-eq(xp.code("\u{A0}"), 255, "last code")
+eq(xp.code("□"), 255, "last code, as REXPaint draws it")
+eq(xp.code("\u{A0}"), 32, "no-break space is a space")
 eq(xp.code("☃"), 63, "missing glyph is ?")
+
+-- CP437 preset: every glyph has its own code, light to dark
+local seen, ramp = {}, core.split(core.presets.CP437)
+for _, g in ipairs(ramp) do
+  assert(xp.code(g) ~= 63 and not seen[g], g .. " has a CP437 code, once")
+  seen[g] = true
+end
+eq(ramp[1] .. ramp[#ramp], " █", "CP437 ramp ends")
 eq(xp.crc32("123456789"), 0xCBF43926, "crc32 check value")
 
 -- Reads back xp.gzip's stored blocks, checking the framing and trailer.

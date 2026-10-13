@@ -183,7 +183,7 @@ local function open()
   dlg:slider{ id = "cellH", label = "Cell height", min = 1, max = 32, value = prefs.cellH, onchange = apply }
   -- Presets show their ramp read-only; Custom edits and keeps the user's own glyphs.
   local function ramp() return prefs.preset == "Custom" and prefs.glyphs or core.presets[prefs.preset] end
-  dlg:combobox{ id = "preset", label = "Preset", option = prefs.preset, options = { "Standard", "Detailed", "Custom" },
+  dlg:combobox{ id = "preset", label = "Preset", option = prefs.preset, options = { "Standard", "Detailed", "CP437", "Custom" },
     onchange = function()
       prefs.preset = dlg.data.preset
       dlg:modify{ id = "glyphs", text = ramp(), enabled = prefs.preset == "Custom" }

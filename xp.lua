@@ -16,7 +16,10 @@ end
 map(1, "☺☻♥♦♣♠•◘○◙♂♀♪♫☼►◄↕‼¶§▬↨↑↓→←∟↔▲▼")
 for i = 32, 126 do CODES[string.char(i)] = i end
 map(127, "⌂ÇüéâäàåçêëèïîìÄÅÉæÆôöòûùÿÖÜ¢£¥₧ƒáíóúñÑªº¿⌐¬½¼¡«»░▒▓│┤╡╢╖╕╣║╗╝╜╛┐└┴┬├─┼╞╟╚╔╩╦╠═╬╧"
-  .. "╨╤╥╙╘╒╓╫╪┘┌█▄▌▐▀αßΓπΣσµτΦΘΩδ∞φε∩≡±≥≤⌠⌡÷≈°∙·√ⁿ²■\u{A0}")
+  .. "╨╤╥╙╘╒╓╫╪┘┌█▄▌▐▀αßΓπΣσµτΦΘΩδ∞φε∩≡±≥≤⌠⌡÷≈°∙·√ⁿ²■□")
+-- REXPaint's fonts draw □ at 255, not IBM's blank; its text export (_utf8.txt) also writes ◛ for 8
+-- and a no-break space for 32.
+CODES["◛"], CODES["\u{A0}"] = 8, 32
 
 -- Glyphs CP437 doesn't have become "?", as REXPaint's own text import does.
 function xp.code(glyph)

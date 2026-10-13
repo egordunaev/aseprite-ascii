@@ -5,6 +5,9 @@ local core = {}
 core.presets = {
   Standard = " .:-=+*#%@",
   Detailed = " .'`^\",:;Il!i><~+_-?][}{1)(|\\/tfjrxnuvczXYUJCLQ0OZmwqpdbkhao*#MW&8%B@$",
+  -- One glyph per ink level of REXPaint's default CP437 12x12 font; on ties, the one whose
+  -- ink varies least across its other font sizes.
+  CP437 = " ·∙.-_:⌐²;(√•τir÷⌠Γ7∞èò₧öÉôû░ßΘΩ○QÅÑ0♥¶♣♫╢╣╫╬▒◙▓◘█",
 }
 
 -- Splits a UTF-8 string into a table of characters.
